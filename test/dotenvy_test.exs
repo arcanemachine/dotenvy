@@ -105,6 +105,119 @@ defmodule DotenvyTest do
     end
   end
 
+  describe "get_dotenv/3" do
+    test "default type is string", %{test: test} do
+      System.put_env("TEST_VALUE", "#{test}")
+      source([System.get_env()])
+
+      assert get_dotenv("TEST_VALUE") |> is_binary()
+    end
+
+    test "returns nil default when variable not set" do
+      assert nil == get_dotenv("DOES_NOT_EXIST")
+      assert nil == get_dotenv("DOES_NOT_EXIST", :string)
+    end
+
+    test "returns default when variable not set" do
+      assert "some-default" = get_dotenv("DOES_NOT_EXIST", "some-default")
+      assert "some-default" = get_dotenv("DOES_NOT_EXIST", :string, "some-default")
+    end
+
+    test "returns value when env set and sourced", %{test: test} do
+      System.put_env("TEST_VALUE", "#{test}")
+      source([System.get_env()])
+      assert "#{test}" == get_dotenv("TEST_VALUE", :string, nil)
+    end
+
+    test "returns nil default when env set but not sourced", %{test: test} do
+      System.put_env("TEST_VALUE", "#{test}")
+
+      assert nil == get_dotenv("TEST_VALUE", :string)
+
+      source([System.get_env()])
+      assert "#{test}" == get_dotenv("TEST_VALUE", :string, nil)
+    end
+
+    test "built-in conversion errors convert to RuntimeError", %{test: test} do
+      System.put_env("TEST_VALUE", "#{test}")
+      source([System.get_env()])
+
+      assert_raise RuntimeError, fn ->
+        get_dotenv("TEST_VALUE", :integer, 123)
+      end
+    end
+
+    test "raising Dotenvy.Error with custom message converts to RuntimeError", %{test: test} do
+      System.put_env("TEST_VALUE", "#{test}")
+      source([System.get_env()])
+
+      assert_raise RuntimeError, ~r/Custom error/, fn ->
+        get_dotenv(
+          "TEST_VALUE",
+          fn _ ->
+            raise Dotenvy.Error, message: "Custom error"
+          end,
+          "default"
+        )
+      end
+    end
+
+    test "raising other error types passes thru", %{test: test} do
+      System.put_env("TEST_VALUE", "#{test}")
+      source([System.get_env()])
+
+      assert_raise FunctionClauseError, fn ->
+        get_dotenv("TEST_VALUE", fn _ -> Keyword.get(%{}, :foo) end, "default")
+      end
+    end
+  end
+
+  describe "fetch_dotenv!/2" do
+    test "wraps env!/2", %{test: test} do
+      System.put_env("TEST_VALUE", "#{test}")
+      source([System.get_env()])
+
+      assert env!("TEST_VALUE") == fetch_dotenv!("TEST_VALUE")
+      assert env!("TEST_VALUE", :string) == fetch_dotenv!("TEST_VALUE", :string)
+    end
+
+    # Returns the same results as `env!/2` for non-happy-path tests
+    test "raises when variable not set" do
+      assert_raise RuntimeError, fn ->
+        fetch_dotenv!("DOES_NOT_EXIST", :string!)
+      end
+    end
+
+    test "built-in conversion errors convert to RuntimeError", %{test: test} do
+      System.put_env("TEST_VALUE", "#{test}")
+      source([System.get_env()])
+
+      assert_raise RuntimeError, fn ->
+        fetch_dotenv!("TEST_VALUE", :integer)
+      end
+    end
+
+    test "raising Dotenvy.Error with custom message converts to RuntimeError", %{test: test} do
+      System.put_env("TEST_VALUE", "#{test}")
+      source([System.get_env()])
+
+      assert_raise RuntimeError, ~r/Custom error/, fn ->
+        fetch_dotenv!("TEST_VALUE", fn _ ->
+          raise Dotenvy.Error, message: "Custom error"
+        end)
+      end
+    end
+
+    test "raising other error types passes thru", %{test: test} do
+      System.put_env("TEST_VALUE", "#{test}")
+      source([System.get_env()])
+
+      assert_raise FunctionClauseError, fn ->
+        fetch_dotenv!("TEST_VALUE", fn _ -> Keyword.get(%{}, :foo) end)
+      end
+    end
+  end
+
   describe "source/2" do
     test ":ok when no files parsed" do
       assert {:ok, %{}} == source("does_not_exist")

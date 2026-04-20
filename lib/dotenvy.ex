@@ -163,6 +163,67 @@ defmodule Dotenvy do
   end
 
   @doc """
+  Reads an env variable from the sourced dotenv store, converting its value to the given `type`,
+  or returns a `default` value.
+
+  This is a convenience wrapper around `env!/3` that defaults to `nil` when no `default` is
+  provided, matching the convention of `System.get_env/2`.
+
+  **The `default` value is returned as-is, without conversion**, consistent with `env!/3`. See
+  `env!/3` for full documentation.
+
+  ## Examples
+
+  Fallback values for different scenarios:
+
+      iex> get_dotenv("NOT_SET")
+      nil
+
+      iex> get_dotenv("NOT_SET", "default")
+      "default"
+
+      iex> get_dotenv("NOT_SET", :integer!)
+      nil
+
+      iex> get_dotenv("NOT_SET", :integer!, 5)
+      5
+  """
+  @spec get_dotenv(variable :: binary()) :: any()
+  def get_dotenv(variable), do: env!(variable, :string, nil)
+
+  @spec get_dotenv(variable :: binary(), default :: binary()) :: any() | no_return()
+  def get_dotenv(variable, default) when is_binary(default), do: env!(variable, :string, default)
+
+  @spec get_dotenv(
+          variable :: binary(),
+          type :: Dotenvy.Transformer.conversion_type(),
+          default :: any()
+        ) :: any() | no_return()
+  def get_dotenv(variable, type, default \\ nil), do: env!(variable, type, default)
+
+  @doc """
+  Reads an env variable from the sourced dotenv store and converts its value to the given `type`.
+  Raises if the variable is not set.
+
+  This is a convenience alias for `env!/2`, providing a name that matches the convention of
+  `System.fetch_env!/1`. See `env!/2` for full documentation.
+
+  ## Examples
+
+      iex> fetch_dotenv!("PORT", :integer!)
+      5432
+
+      iex> fetch_dotenv!("NOT_SET")
+      ** (RuntimeError) Environment variable NOT_SET not set
+  """
+  @spec fetch_dotenv!(variable :: binary()) :: any() | no_return()
+  def fetch_dotenv!(variable), do: env!(variable)
+
+  @spec fetch_dotenv!(variable :: binary(), type :: Dotenvy.Transformer.conversion_type()) ::
+          any() | no_return()
+  def fetch_dotenv!(variable, type), do: env!(variable, type)
+
+  @doc """
   Like its Bash namesake command, `source/2` accumulates values from the given input(s).
   The accumulated values are stored via a side effect function to make them available
   to the `env!/2` and `env!/3` functions.

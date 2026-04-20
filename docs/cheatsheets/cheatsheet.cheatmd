@@ -131,6 +131,18 @@ config :my_app, MyApp.PGRepo,
   password: env!("PG_PASSWORD", :string),
   port: env!("PG_PORT", :integer),
   hostname: env!("PG_HOSTNAME", :string)
+
+# `get_dotenv/2,3` (alias of `env!/3`, but with fallback to nil; default type is string)
+config :my_app,
+  username: get_dotenv("PG_USERNAME"), # string type, fallback to nil
+  database: get_dotenv("PG_DATABASE", "my_app_db"), # string type, fallback to "my_app_db"
+  port: get_dotenv("PG_PORT", :integer), # fallback to nil
+  pool_size: get_dotenv("PG_POOL_SIZE", :integer, 10) # fallback to 10
+
+# `fetch_dotenv!/2` (alias of `env!/2` - raises if value not found; default type is string)
+config :my_app,
+  secret_key: fetch_dotenv!("SECRET_KEY"),
+  secret_number: fetch_dotenv!("SECRET_NUMBER", :integer!)
 ```
 
 ## Transformations
